@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Melo\ExceptionHandler;
 
 use FastRoute\BadRouteException;
+use Melo\ExceptionHandler\Notification\Notifier;
 use Throwable;
 use Webman\Exception\ExceptionHandler;
 use Webman\Http\Request;
@@ -67,6 +68,7 @@ class Handler extends ExceptionHandler
 
         $this->addRequestInfoToResponse($request);
         $this->solveAllException($exception);
+        $this->notify($request, $exception);
         $this->addDebugInfoToResponse($exception);
 
         return $this->buildResponse();
@@ -106,7 +108,48 @@ class Handler extends ExceptionHandler
                 'msg' => '服务器内部异常',
                 'data' => null,
             ],
+            'notify' => [
+                'enable' => false,
+                'min_status' => 500,
+                'async' => true,
+                'timeout' => 2.0,
+                'trace_lines' => 5,
+                'include_raw_message' => true,
+                'include_request_param' => false,
+                'dont_notify' => [],
+                'channels' => [
+                    'dingtalk' => ['enable' => false, 'webhook' => '', 'secret' => ''],
+                    'feishu' => ['enable' => false, 'webhook' => '', 'secret' => ''],
+                    'wecom' => ['enable' => false, 'webhook' => '', 'secret' => ''],
+                ],
+            ],
         ];
+    }
+
+    /**
+     * 触发机器人通知；配置未开启时为空操作。
+     */
+    protected function notify(Request $request, Throwable $exception): void
+    {
+        $config = $this->config['notify'] ?? [];
+        if (!is_array($config)) {
+            return;
+        }
+
+        $this->createNotifier($config)->notify(
+            $exception,
+            $request,
+            $this->statusCode,
+            $this->errorMessage
+        );
+    }
+
+    /**
+     * 子类可覆盖以注入自定义通知器。
+     */
+    protected function createNotifier(array $config): Notifier
+    {
+        return new Notifier($config);
     }
 
     /**

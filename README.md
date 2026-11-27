@@ -2,8 +2,6 @@
 
 Webman 异常处理插件：将异常统一转换为 JSON 响应，支持业务异常类、自定义状态码/响应体，以及调试模式下的详细堆栈。
 
-参考 [Tinywan/webman-exception](https://github.com/Tinywan/webman-exception) 实现，去除钉钉/飞书通知与 Logger，仅保留异常处理核心，第三方插件异常（tinywan/validate、tinywan/jwt、think-orm）为可选软适配，不构成强制依赖。
-
 ## 环境要求
 
 - PHP >= 8.0
@@ -159,6 +157,49 @@ class MethodNotAllowedException extends BaseException
 - `body` 的前两个键可改名，例如改成 `error_code` / `message`，用于匹配前端约定；第三个键固定承载响应数据。
 - `server_error_is_response` / `type_error_is_response` 控制是否把原始错误信息暴露给客户端，生产环境建议保持 `false`。
 
+## 机器人通知
+
+通知默认关闭，开启后仅对 `statusCode >= min_status`（默认 500）的异常发送消息，业务 4xx 不会刷屏。通知失败会被静默忽略，不影响返回给客户端的 JSON 响应。
+
+```php
+'notify' => [
+    'enable' => true,
+    'min_status' => 500,
+    'async' => true,                // 基于 Workerman Timer 异步发送
+    'timeout' => 2.0,
+    'trace_lines' => 5,
+    'include_raw_message' => true,  // 原始错误信息只进通知，不返回客户端
+    'include_request_param' => false,
+    'redact_keys' => ['password', 'token', 'secret', 'authorization'],
+    'dont_notify' => [],            // 可按异常类排除
+    'channels' => [
+        'dingtalk' => [
+            'enable' => true,
+            'webhook' => getenv('DINGTALK_WEBHOOK'),
+            'secret' => getenv('DINGTALK_SECRET'), // 加签，可选
+        ],
+        'feishu' => [
+            'enable' => false,
+            'webhook' => getenv('FEISHU_WEBHOOK'),
+            'secret' => getenv('FEISHU_SECRET'),   // 签名校验，可选
+        ],
+        'wecom' => [
+            'enable' => false,
+            'webhook' => getenv('WECOM_WEBHOOK'),
+        ],
+    ],
+],
+```
+
+- 钉钉使用 markdown 消息，配置 `secret` 时自动附加 `timestamp`/`sign`。
+- 飞书使用文本消息，配置 `secret` 时自动附加签名。
+- 企业微信使用 markdown 消息，无需签名。
+- 请求参数默认不发送；开启 `include_request_param` 后，`redact_keys` 命中的字段会被掩码。
+- webhook/secret 建议用环境变量注入，不要写进公开仓库。
+- 从旧版升级时，重新安装或手动补全 `config/plugin/melo/exception-handler/app.php` 中的 `notify` 配置。
+
+自定义渠道可实现 `Melo\ExceptionHandler\Notification\ChannelInterface`，覆盖 `Handler::createNotifier()` 注入自定义渠道列表。
+
 ## 扩展 Handler
 
 继承 `Melo\ExceptionHandler\Handler` 覆盖对应方法：
@@ -183,6 +224,14 @@ class ErrorHandler extends Handler
         return parent::buildResponse();
     }
 }
+```
+
+## 开发校验
+
+无需安装额外依赖，可直接运行桩测试：
+
+```bash
+php tests/smoke.php
 ```
 
 ## License

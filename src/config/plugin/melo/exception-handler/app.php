@@ -34,5 +34,33 @@ return [
             'msg' => '服务器内部异常',
             'data' => null,
         ],
+        // 机器人通知（默认关闭；建议 webhook/secret 通过环境变量注入，勿提交到仓库）
+        'notify' => [
+            'enable' => false,
+            'min_status' => 500,          // 仅通知状态码 >= 该值的异常
+            'async' => true,              // 基于 Workerman Timer 异步发送
+            'timeout' => 2.0,             // 单个渠道超时（秒）
+            'trace_lines' => 5,           // 堆栈摘要行数
+            'include_raw_message' => true, // 通知中包含原始错误信息（不会返回给客户端）
+            'include_request_param' => false,
+            'redact_keys' => ['password', 'token', 'secret', 'authorization', 'access_token'],
+            'dont_notify' => [],          // 不通知的异常类
+            'channels' => [
+                'dingtalk' => [
+                    'enable' => false,
+                    'webhook' => 'https://oapi.dingtalk.com/robot/send?access_token=xxx',
+                    'secret' => '',       // 加签密钥，可选
+                ],
+                'feishu' => [
+                    'enable' => false,
+                    'webhook' => 'https://open.feishu.cn/open-apis/bot/v2/hook/xxx',
+                    'secret' => '',       // 签名校验密钥，可选
+                ],
+                'wecom' => [
+                    'enable' => false,
+                    'webhook' => 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx',
+                ],
+            ],
+        ],
     ],
 ];
