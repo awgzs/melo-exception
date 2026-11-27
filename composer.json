@@ -1,0 +1,25 @@
+{
+  "name": "melo/exception-handler",
+  "description": "Webman exception handler with unified JSON responses",
+  "type": "library",
+  "license": "MIT",
+  "homepage": "https://github.com/awgzs/melo-exception",
+  "authors": [
+    {
+      "name": "棉花糖",
+      "email": "aw9420@qq.com",
+      "role": "Developer"
+    }
+  ],
+  "keywords": ["webman", "exception", "handler", "json"],
+  "require": {
+    "php": ">=8.0",
+    "ext-json": "*",
+    "workerman/webman-framework": "^1.5 || ^2.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Melo\\ExceptionHandler\\": "src/"
+    }
+  }
+}
